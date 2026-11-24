@@ -1,4 +1,5 @@
 # 🚌 TransportStack
+
 ### Smart Public Transport Journey Planner & Real-Time Bus Tracking Platform
 
 **Plan Smarter. Travel Better. Stay Connected.**
@@ -12,6 +13,7 @@ Built with a focus on practical urban mobility challenges, TransportStack aims t
 ## 🌟 Key Features
 
 ### 🧭 1. Smart Journey Planner
+
 - Select source and destination locations.
 - Search for available public transport journeys.
 - Explore multiple route alternatives.
@@ -19,22 +21,26 @@ Built with a focus on practical urban mobility challenges, TransportStack aims t
 - Make informed travel decisions using route information.
 
 ### 🗺️ 2. Interactive Route Visualization
+
 - View selected journeys on an interactive map.
 - Understand route paths and stop locations visually.
 - Explore geographical relationships between stops and routes.
 
 ### 📍 3. Real-Time Bus Tracking
+
 - Monitor available buses through live vehicle information.
 - Visualize vehicle positions on the map.
 - Track vehicle progress along its assigned route.
 - Access route progress and estimated arrival information where available.
 
 ### 🚏 4. Nearest Bus Stops
+
 - Discover nearby bus stops.
 - Explore stop-related information.
 - Make it easier to identify accessible boarding points.
 
 ### 📊 5. GTFS-Based Transport Data
+
 - Uses General Transit Feed Specification (GTFS) datasets.
 - Processes routes, stops, trips, stop times, and route shapes.
 - Supports route and geographical data mapping.
@@ -70,6 +76,7 @@ TransportStack follows a modular backend architecture:
 ## 🚀 Getting Started
 
 ### Prerequisites
+
 - Node.js and npm
 - MongoDB
 - Git
@@ -151,14 +158,20 @@ The goal is to make public transportation information easier to understand and m
 
 ---
 
-## 🔮 Future Scope
+## 🔮 Future Scope & AI-Powered Enhancements
 
-- Improved real-time arrival predictions.
-- Expanded public transport network coverage.
-- More advanced route optimization.
-- Better accessibility and mobile experience.
-- Additional transit data integrations.
-- Improved service reliability through historical data analysis.
+TransportStack aims to evolve into an intelligent urban mobility platform by integrating Artificial Intelligence, predictive analytics, and smarter transportation solutions.
+
+- **🤖 AI-Powered Journey Assistant:** A conversational AI assistant that helps commuters discover routes, understand journey options, and receive travel guidance through natural language queries.
+- **🧠 Intelligent Route Recommendations:** AI-driven route suggestions based on journey duration, transfers, distance, and individual travel preferences.
+- **⏱️ AI-Based Arrival Time Prediction:** Predict bus arrival times using historical trip patterns, route data, and real-time vehicle movement.
+- **📊 Predictive Transport Analytics:** Analyze historical transportation data to identify route performance patterns, travel trends, and potential service delays.
+- **🚦 Smart Delay Detection:** Identify unusual vehicle delays and provide timely travel updates to commuters.
+- **🌐 Multi-Modal Transit Integration:** Expand beyond bus networks by integrating additional public transportation services for seamless journey planning.
+- **📱 Personalized Travel Experience:** Provide personalized journey recommendations based on frequently used routes and commuter preferences.
+- **♿ Accessibility Enhancements:** Explore intelligent journey recommendations and accessible route information for commuters with different mobility requirements.
+
+**Long-Term Vision:** Transform TransportStack from a journey planning and live tracking application into an AI-powered urban mobility ecosystem that combines real-time transportation data, intelligent route recommendations, and predictive travel assistance.
 
 ---
 
@@ -178,7 +191,7 @@ GitHub: [@prashant9956](https://github.com/prashant9956)
 
 **Category:** Smart Mobility / Public Transportation
 
-**Focus Areas:** Journey Planning, GTFS Data Processing, Route Visualization, Real-Time Bus Tracking
+**Focus Areas:** Journey Planning, GTFS Data Processing, Route Visualization, Real-Time Bus Tracking, AI-Powered Mobility Solutions
 
 **Repository:** [TransportStack on GitHub](https://github.com/prashant9956/TransportStack)
 
