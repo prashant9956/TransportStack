@@ -1,0 +1,2056 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TransportStack | Live Bus Tracking</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+
+    <style>
+        :root {
+            --navy: #101a2e;
+            --navy-light: #182640;
+            --blue: #3978f6;
+            --blue-dark: #245edb;
+            --blue-soft: #edf4ff;
+            --green: #16a36a;
+            --orange: #f59e0b;
+            --text: #17243b;
+            --muted: #78869d;
+            --border: #e6ebf2;
+            --surface: #ffffff;
+            --background: #f4f7fb;
+            --shadow: 0 8px 28px rgba(25, 45, 78, .055);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: "DM Sans", sans-serif;
+            background: var(--background);
+            color: var(--text);
+        }
+
+        button, input, select {
+            font: inherit;
+        }
+
+        /* NAVBAR */
+
+        .navbar {
+            min-height: 76px;
+            padding: 0 5.5%;
+            background: var(--navy);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            flex-wrap: wrap;
+            box-shadow: 0 5px 20px rgba(12, 24, 45, .15);
+            position: relative;
+            z-index: 1000;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 11px;
+            text-decoration: none;
+            color: white;
+            font-family: "Outfit", sans-serif;
+            font-size: 25px;
+            font-weight: 800;
+            letter-spacing: -.8px;
+        }
+
+        .brand-icon {
+            width: 39px;
+            height: 39px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #4d91ff, #2860e6);
+            display: grid;
+            place-items: center;
+            font-size: 21px;
+            box-shadow: 0 5px 15px #2860e655;
+        }
+
+        .brand span {
+            color: #68a2ff;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            flex-wrap: wrap;
+        }
+
+        .nav-links a {
+            color: #c1cde0;
+            text-decoration: none;
+            padding: 11px 16px;
+            border-radius: 9px;
+            font-size: 13px;
+            font-weight: 600;
+            transition: .2s ease;
+        }
+
+        .nav-links a:hover {
+            background: #ffffff12;
+            color: white;
+        }
+
+        .nav-links a.active {
+            background: #3978f6;
+            color: white;
+            box-shadow: 0 4px 13px #3978f644;
+        }
+
+        /* PAGE */
+
+        .container {
+            max-width: 1720px;
+            margin: auto;
+            padding: 32px 4.5% 28px;
+        }
+
+        .page-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-bottom: 25px;
+        }
+
+        .eyebrow {
+            color: var(--blue);
+            text-transform: uppercase;
+            letter-spacing: 1.7px;
+            font-size: 10px;
+            font-weight: 800;
+            margin-bottom: 9px;
+        }
+
+        .heading h1 {
+            font-family: "Outfit", sans-serif;
+            font-size: clamp(27px, 3vw, 36px);
+            letter-spacing: -.8px;
+            margin: 0 0 7px;
+            color: var(--navy);
+            font-weight: 700;
+        }
+
+        .heading p {
+            color: var(--muted);
+            font-size: 14px;
+            margin: 0;
+            line-height: 1.6;
+        }
+
+        .feed-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 9px;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 30px;
+            padding: 10px 15px;
+            color: #64748b;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: .5px;
+            box-shadow: var(--shadow);
+        }
+
+        .feed-indicator .pulse {
+            width: 8px;
+            height: 8px;
+            background: var(--green);
+            border-radius: 50%;
+            box-shadow: 0 0 0 4px #16a36a1c;
+        }
+
+        /* JOURNEY PANEL */
+
+        .journey-panel {
+            display: none;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 17px;
+            padding: 22px;
+            margin-bottom: 22px;
+            box-shadow: var(--shadow);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .journey-panel::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 5px;
+            height: 100%;
+            background: linear-gradient(180deg, #3978f6, #70a6ff);
+        }
+
+        .journey-panel.visible {
+            display: block;
+        }
+
+        .journey-panel h2 {
+            font-family: "Outfit", sans-serif;
+            font-size: 19px;
+            margin: 0 0 7px;
+            color: var(--navy);
+        }
+
+        .journey-route-summary {
+            color: var(--muted);
+            font-size: 13px;
+            margin-bottom: 17px;
+        }
+
+        .journey-leg-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 12px;
+        }
+
+        .journey-leg-card {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 15px;
+            background: #f8faff;
+        }
+
+        .journey-leg-card strong {
+            display: block;
+            font-size: 13px;
+            margin-bottom: 8px;
+            color: var(--navy);
+        }
+
+        .journey-leg-card p {
+            font-size: 12px;
+            color: var(--muted);
+            margin: 0 0 11px;
+            line-height: 1.8;
+        }
+
+        .leg-status {
+            display: inline-flex;
+            align-items: center;
+            border-radius: 20px;
+            padding: 6px 10px;
+            font-size: 10px;
+            font-weight: 800;
+            background: #e9eef5;
+            color: #64748b;
+        }
+
+        .leg-status.found {
+            background: #e4f8ef;
+            color: #138453;
+        }
+
+        .leg-status.missing {
+            background: #fff3e5;
+            color: #bd6a0b;
+        }
+
+        .journey-notice {
+            margin-top: 15px;
+            padding: 13px 15px;
+            background: var(--blue-soft);
+            border: 1px solid #dce9ff;
+            border-radius: 10px;
+            color: #2858a5;
+            font-size: 12px;
+            line-height: 1.7;
+        }
+
+        .back-link {
+            display: inline-flex;
+            margin-top: 14px;
+            color: var(--blue);
+            font-size: 12px;
+            font-weight: 700;
+            text-decoration: none;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        /* STAT CARDS */
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 22px;
+        }
+
+        .stat-card {
+            background: var(--surface);
+            padding: 20px 21px;
+            border-radius: 15px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            min-width: 0;
+            transition: transform .2s, box-shadow .2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 30px rgba(25, 45, 78, .09);
+        }
+
+        .stat-icon {
+            width: 47px;
+            height: 47px;
+            flex: 0 0 47px;
+            border-radius: 13px;
+            display: grid;
+            place-items: center;
+            font-size: 22px;
+        }
+
+        .stat-icon.blue {
+            background: #eaf2ff;
+        }
+
+        .stat-icon.purple {
+            background: #f1edff;
+        }
+
+        .stat-icon.green {
+            background: #e7f8ef;
+        }
+
+        .stat-icon.orange {
+            background: #fff3e4;
+        }
+
+        .stat-content {
+            min-width: 0;
+        }
+
+        .stat-card p {
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 600;
+            margin: 0 0 5px;
+        }
+
+        .stat-card h2 {
+            font-family: "Outfit", sans-serif;
+            font-size: 27px;
+            margin: 0;
+            color: var(--navy);
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        #lastUpdated {
+            font-size: 19px;
+        }
+
+        /* MAP PANEL */
+
+        .map-wrapper {
+            background: white;
+            padding: 22px;
+            border-radius: 18px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+        }
+
+        .map-heading {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 14px;
+            margin-bottom: 19px;
+        }
+
+        .map-heading h2 {
+            font-family: "Outfit", sans-serif;
+            font-size: 21px;
+            margin: 0;
+            color: var(--navy);
+        }
+
+        .map-heading p {
+            color: var(--muted);
+            font-size: 12px;
+            margin: 5px 0 0;
+        }
+
+        .map-heading-tag {
+            background: #edf4ff;
+            color: #3169ca;
+            border: 1px solid #dce9ff;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: .6px;
+        }
+
+        /* TOOLBAR */
+
+        .map-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 13px;
+            flex-wrap: wrap;
+            margin-bottom: 13px;
+            padding: 13px;
+            background: #f7f9fc;
+            border: 1px solid #edf0f5;
+            border-radius: 12px;
+        }
+
+        .search-controls {
+            display: flex;
+            gap: 9px;
+            flex: 1;
+            flex-wrap: wrap;
+            min-width: 250px;
+        }
+
+        .map-toolbar input,
+        .map-toolbar select {
+            height: 43px;
+            border: 1px solid #dce3ed;
+            border-radius: 9px;
+            padding: 0 13px;
+            background: white;
+            color: var(--text);
+            font-size: 12px;
+            outline: none;
+            transition: .2s;
+        }
+
+        .map-toolbar select {
+            min-width: 165px;
+            cursor: pointer;
+        }
+
+        .map-toolbar input {
+            flex: 1;
+            min-width: 180px;
+        }
+
+        .map-toolbar input:focus,
+        .map-toolbar select:focus {
+            border-color: var(--blue);
+            box-shadow: 0 0 0 3px #3978f61a;
+        }
+
+        .map-toolbar button {
+            height: 43px;
+            padding: 0 17px;
+            border: 0;
+            border-radius: 9px;
+            background: var(--blue);
+            color: white;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: .2s;
+        }
+
+        .map-toolbar button:hover {
+            background: var(--blue-dark);
+            transform: translateY(-1px);
+        }
+
+        .map-toolbar .clear-btn {
+            background: #e9eef5;
+            color: #52627a;
+        }
+
+        .map-toolbar .clear-btn:hover {
+            background: #dce4ef;
+        }
+
+        .toolbar-actions {
+            display: flex;
+            gap: 13px;
+            align-items: center;
+        }
+
+        .status {
+            font-size: 10px;
+            font-weight: 800;
+            color: var(--green);
+            letter-spacing: .4px;
+            white-space: nowrap;
+        }
+
+        .result-info {
+            font-size: 12px;
+            color: var(--muted);
+            margin: 0 0 13px;
+        }
+
+        /* MAP */
+
+        #map {
+            width: 100%;
+            height: 680px;
+            border-radius: 13px;
+            z-index: 1;
+            border: 1px solid #e2e8f0;
+            overflow: hidden;
+            background: #e8edf4;
+        }
+
+        .leaflet-control-zoom a {
+            color: var(--navy) !important;
+        }
+
+        .leaflet-control-attribution {
+            font-size: 9px !important;
+        }
+
+        /* LEGEND */
+
+        .map-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 14px;
+            flex-wrap: wrap;
+            margin-top: 16px;
+        }
+
+        .legend {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            font-size: 11px;
+            color: #64748b;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-dot {
+            height: 9px;
+            width: 9px;
+            border-radius: 50%;
+        }
+
+        .legend-dot.live {
+            background: #3978f6;
+            box-shadow: 0 0 0 3px #3978f61c;
+        }
+
+        .legend-dot.stale {
+            background: #f59e0b;
+            box-shadow: 0 0 0 3px #f59e0b22;
+        }
+
+        .map-hint {
+            font-size: 11px;
+            color: #8a97aa;
+        }
+
+        .map-footer {
+            color: #8b98aa;
+            text-align: center;
+            font-size: 11px;
+            line-height: 1.8;
+            margin-top: 23px;
+        }
+
+        /* BUS MARKERS */
+
+        .custom-bus-icon {
+            background: transparent;
+            border: none;
+        }
+
+        .bus-icon-wrapper {
+            width: 42px;
+            height: 42px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 14px;
+            font-size: 22px;
+            border: 2px solid white;
+            box-shadow: 0 4px 14px #17243b55;
+            transition: transform .2s;
+        }
+
+        .bus-icon-wrapper:hover {
+            transform: scale(1.13);
+        }
+
+        .bus-icon-wrapper.live {
+            background: linear-gradient(135deg, #4b91ff, #2861e8);
+        }
+
+        .bus-icon-wrapper.stale {
+            background: linear-gradient(135deg, #ffbd4a, #e88c13);
+        }
+
+        /* POPUPS */
+
+        .leaflet-popup-content-wrapper {
+            border-radius: 14px;
+            box-shadow: 0 10px 35px #17243b25;
+        }
+
+        .leaflet-popup-content {
+            margin: 16px;
+            min-width: 245px;
+            max-width: 290px;
+            line-height: 1.75;
+            font-size: 12px;
+            color: #475569;
+        }
+
+        .popup-heading {
+            font-family: "Outfit", sans-serif;
+            font-size: 17px;
+            font-weight: 800;
+            color: var(--navy);
+            border-bottom: 1px solid #e9edf3;
+            padding-bottom: 9px;
+            margin-bottom: 9px;
+        }
+
+        .popup-status {
+            display: inline-block;
+            font-size: 9px;
+            font-weight: 800;
+            letter-spacing: .5px;
+            padding: 4px 9px;
+            border-radius: 20px;
+            margin-bottom: 8px;
+        }
+
+        .popup-status.live {
+            background: #e3f8ed;
+            color: #128251;
+        }
+
+        .popup-status.stale {
+            background: #fff2dc;
+            color: #b66a0b;
+        }
+
+        .popup-eta {
+            background: #eff5ff;
+            padding: 12px;
+            border-radius: 10px;
+            margin: 12px 0;
+            border-left: 3px solid var(--blue);
+        }
+
+        .popup-eta strong {
+            display: block;
+            font-family: "Outfit", sans-serif;
+            font-size: 23px;
+            color: #2863d7;
+            line-height: 1.4;
+        }
+
+        .popup-label {
+            font-size: 9px;
+            color: #64748b;
+            font-weight: 800;
+            letter-spacing: .8px;
+        }
+
+        .popup-stop-name {
+            font-size: 12px;
+            font-weight: 700;
+            color: #17243b;
+            line-height: 1.5;
+            margin: 5px 0;
+        }
+
+        .popup-progress {
+            height: 8px;
+            background: #e9eef5;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 8px 0;
+        }
+
+        .popup-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #20b77b, #54d69e);
+            border-radius: 10px;
+        }
+
+        .popup-muted {
+            color: #8491a5;
+            font-size: 10px;
+        }
+
+        .popup-divider {
+            border: 0;
+            border-top: 1px solid #e9edf3;
+            margin: 11px 0;
+        }
+
+        .popup-error {
+            color: #a9630c;
+            background: #fff7e9;
+            border: 1px solid #ffebc8;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 11px;
+            margin: 10px 0;
+        }
+
+        /* CLUSTER STYLE */
+
+        .marker-cluster-small,
+        .marker-cluster-medium,
+        .marker-cluster-large {
+            background: #3978f633;
+        }
+
+        .marker-cluster-small div,
+        .marker-cluster-medium div,
+        .marker-cluster-large div {
+            background: #3978f6;
+            color: white;
+            font-family: "DM Sans", sans-serif;
+            font-weight: 800;
+        }
+
+        /* RESPONSIVE */
+
+        @media (max-width: 1050px) {
+            .container {
+                padding-left: 24px;
+                padding-right: 24px;
+            }
+
+            .stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            #map {
+                height: 590px;
+            }
+        }
+
+        @media (max-width: 650px) {
+            .navbar {
+                padding: 14px 16px;
+                gap: 13px;
+            }
+
+            .brand {
+                font-size: 22px;
+            }
+
+            .nav-links {
+                width: 100%;
+                gap: 5px;
+            }
+
+            .nav-links a {
+                padding: 9px 11px;
+                font-size: 11px;
+            }
+
+            .container {
+                padding: 23px 13px;
+            }
+
+            .page-top {
+                align-items: flex-start;
+            }
+
+            .heading h1 {
+                font-size: 27px;
+            }
+
+            .feed-indicator {
+                font-size: 9px;
+            }
+
+            .stats {
+                grid-template-columns: 1fr 1fr;
+                gap: 9px;
+            }
+
+            .stat-card {
+                padding: 13px 11px;
+                gap: 9px;
+                border-radius: 12px;
+            }
+
+            .stat-icon {
+                width: 36px;
+                height: 36px;
+                flex-basis: 36px;
+                font-size: 17px;
+                border-radius: 10px;
+            }
+
+            .stat-card p {
+                font-size: 10px;
+            }
+
+            .stat-card h2 {
+                font-size: 21px;
+            }
+
+            #lastUpdated {
+                font-size: 14px;
+            }
+
+            .map-wrapper {
+                padding: 12px;
+                border-radius: 14px;
+            }
+
+            .map-heading h2 {
+                font-size: 19px;
+            }
+
+            .map-heading-tag {
+                font-size: 9px;
+            }
+
+            .map-toolbar {
+                padding: 10px;
+            }
+
+            .search-controls {
+                width: 100%;
+                min-width: 0;
+            }
+
+            .search-controls select,
+            .search-controls input,
+            .search-controls button {
+                width: 100%;
+                min-width: 0;
+            }
+
+            .toolbar-actions {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            #map {
+                height: 520px;
+            }
+
+            .map-bottom {
+                align-items: flex-start;
+            }
+
+            .legend {
+                gap: 12px;
+            }
+
+            .journey-panel {
+                padding: 17px;
+            }
+
+            .journey-leg-list {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 370px) {
+            .stats {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<nav class="navbar">
+    <a href="/" class="brand">
+        <span class="brand-icon">🚌</span>
+        Transport<span>Stack</span>
+    </a>
+
+    <div class="nav-links">
+        <a href="/journey-planner" id="journeyPlannerLink">Journey Planner</a>
+        <a href="/live-map" class="active">Live Map</a>
+        <a href="/nearest-stops">Nearest Stops</a>
+    </div>
+</nav>
+
+<main class="container">
+
+    <div class="page-top">
+        <div class="heading">
+            <div class="eyebrow">TRANSPORT INTELLIGENCE PLATFORM</div>
+            <h1 id="pageHeading">Delhi Live Bus Tracking</h1>
+            <p id="pageDescription">
+                Monitor buses, real-time GPS positions, routes and estimated arrival times.
+            </p>
+        </div>
+
+        <div class="feed-indicator">
+            <span class="pulse"></span>
+            REAL-TIME MONITORING
+        </div>
+    </div>
+
+    <!-- Selected journey panel -->
+    <section class="journey-panel" id="journeyPanel">
+        <h2 id="journeyTitle">Your selected journey</h2>
+        <div class="journey-route-summary" id="journeySummary"></div>
+
+        <div class="journey-leg-list" id="journeyLegList"></div>
+
+        <div class="journey-notice" id="journeyNotice">
+            Checking live buses for your selected journey...
+        </div>
+
+        <a href="/journey-planner" class="back-link">
+            ← Back to Journey Planner
+        </a>
+    </section>
+
+    <!-- Dashboard statistics -->
+    <section class="stats">
+
+        <div class="stat-card">
+            <div class="stat-icon blue">🚌</div>
+            <div class="stat-content">
+                <p id="totalVehiclesLabel">Total Vehicles</p>
+                <h2 id="totalVehicles">--</h2>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon purple">📍</div>
+            <div class="stat-content">
+                <p>Vehicles on Map</p>
+                <h2 id="mappedVehicles">--</h2>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon green">📡</div>
+            <div class="stat-content">
+                <p>Live GPS Vehicles</p>
+                <h2 id="liveVehicles">--</h2>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon orange">🕒</div>
+            <div class="stat-content">
+                <p>Last Updated</p>
+                <h2 id="lastUpdated">--</h2>
+            </div>
+        </div>
+
+    </section>
+
+    <!-- Map section -->
+    <section class="map-wrapper">
+
+        <div class="map-heading">
+            <div>
+                <h2 id="mapTitle">Live Fleet Map</h2>
+                <p id="mapDescription">
+                    Explore bus locations across Delhi and select a marker for live route details.
+                </p>
+            </div>
+
+            <span class="map-heading-tag">DELHI NETWORK</span>
+        </div>
+
+        <div class="map-toolbar" id="mapToolbar">
+
+            <div class="search-controls">
+
+                <select id="searchType">
+                    <option value="vehicleId">Vehicle Number</option>
+                    <option value="routeId">Route ID</option>
+                    <option value="routeName">Route Name</option>
+                    <option value="tripId">Trip ID</option>
+                    <option value="directionId">Direction ID</option>
+                    <option value="gpsStatus">GPS Status</option>
+                </select>
+
+                <input
+                    type="text"
+                    id="mapSearch"
+                    placeholder="Search vehicle number..."
+                    autocomplete="off"
+                >
+
+                <button type="button" class="clear-btn" onclick="clearSearch()">
+                    Clear Search
+                </button>
+
+            </div>
+
+            <div class="toolbar-actions">
+                <span class="status" id="feedStatus">● CONNECTING...</span>
+                <button type="button" onclick="loadLiveVehicles()">↻ Refresh Data</button>
+            </div>
+
+        </div>
+
+        <p class="result-info" id="resultInfo">
+            Loading available vehicles...
+        </p>
+
+        <div id="map"></div>
+
+        <div class="map-bottom">
+            <div class="legend">
+                <div class="legend-item">
+                    <span class="legend-dot live"></span>
+                    Live GPS
+                </div>
+
+                <div class="legend-item">
+                    <span class="legend-dot stale"></span>
+                    Stale GPS
+                </div>
+            </div>
+
+            <div class="map-hint">
+                Select any bus marker to view route progress and ETA
+            </div>
+        </div>
+
+    </section>
+
+    <div class="map-footer">
+        Map data © OpenStreetMap contributors |
+        Live feed © Delhi Open Transit Data
+        <br>
+        TransportStack — Real-time Public Transport Monitoring
+    </div>
+
+</main>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
+<script>
+
+/* =========================================
+   MAP INITIALIZATION
+========================================= */
+
+const map = L.map("map").setView([28.6139, 77.2090], 11);
+
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: "&copy; OpenStreetMap contributors",
+    maxZoom: 19
+}).addTo(map);
+
+const markerCluster = L.markerClusterGroup({
+    chunkedLoading: true,
+    maxClusterRadius: 55,
+    spiderfyOnMaxZoom: true,
+    showCoverageOnHover: false
+});
+
+map.addLayer(markerCluster);
+
+const busMarkers = new Map();
+
+let latestVehicles = [];
+let loading = false;
+
+const routeProgressCache = new Map();
+
+/* =========================================
+   JOURNEY MODE
+========================================= */
+
+const urlParams = new URLSearchParams(window.location.search);
+const journeyMode = urlParams.get("mode") === "journey";
+
+let selectedJourneyData = null;
+let selectedJourney = null;
+let journeyLegMatches = [];
+
+/* =========================================
+   HELPER FUNCTIONS
+========================================= */
+
+function escapeHTML(value) {
+    return String(value ?? "").replace(/[&<>"']/g, char => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+    })[char]);
+}
+
+function getRouteName(bus) {
+    return bus.routeName ||
+        bus.routeLongName ||
+        bus.routeShortName ||
+        "N/A";
+}
+
+function createBusIcon(stale) {
+    return L.divIcon({
+        className: "custom-bus-icon",
+        html: `
+            <div class="bus-icon-wrapper ${stale ? "stale" : "live"}">
+                🚌
+            </div>
+        `,
+        iconSize: [42, 42],
+        iconAnchor: [21, 21],
+        popupAnchor: [0, -17]
+    });
+}
+
+/* =========================================
+   BUS POPUP
+========================================= */
+
+function createPopup(bus, progress = null, loadingProgress = false) {
+
+    const stale = Boolean(bus.isStale || bus.dataStatus === "stale");
+
+    const speed = bus.speed == null
+        ? "Unavailable"
+        : Number(bus.speed).toFixed(1) + " km/h";
+
+    const statusHTML = stale
+        ? '<span class="popup-status stale">STALE GPS</span>'
+        : '<span class="popup-status live">LIVE GPS</span>';
+
+    let predictionHTML = "";
+
+    if (stale) {
+
+        predictionHTML = `
+            <div class="popup-error">
+                ETA unavailable because GPS data is stale.
+            </div>
+        `;
+
+    } else if (loadingProgress) {
+
+        predictionHTML = `
+            <div class="popup-eta">
+                <div class="popup-label">NEXT STOP PREDICTION</div>
+                <div class="popup-stop-name">Loading route prediction...</div>
+                <div class="popup-muted">Fetching live route progress</div>
+            </div>
+        `;
+
+    } else if (progress) {
+
+        const nextStop = progress.nextStop;
+
+        if (nextStop && nextStop.available) {
+
+            predictionHTML = `
+                <div class="popup-eta">
+                    <div class="popup-label">NEXT STOP</div>
+
+                    <div class="popup-stop-name">
+                        ${escapeHTML(nextStop.stopName)}
+                    </div>
+
+                    <strong>${escapeHTML(nextStop.eta || "Unavailable")}</strong>
+
+                    <div class="popup-muted">
+                        Distance: ${escapeHTML(nextStop.distance || "N/A")}
+                    </div>
+
+                    <div class="popup-muted">
+                        Speed source: ${escapeHTML(nextStop.speedSource || "N/A")}
+                    </div>
+                </div>
+            `;
+
+        } else {
+
+            predictionHTML = `
+                <div class="popup-error">
+                    ETA unavailable:
+                    ${escapeHTML(
+                        progress.predictionReason ||
+                        (nextStop && nextStop.reason) ||
+                        "Reliable prediction is not available."
+                    )}
+                </div>
+            `;
+        }
+
+    } else if (!loadingProgress) {
+
+        predictionHTML = `
+            <div class="popup-error">
+                Route progress could not be loaded.
+            </div>
+        `;
+    }
+
+    let progressHTML = "";
+
+    if (progress) {
+
+        const percentage = Math.max(
+            0,
+            Math.min(100, Number(progress.progressPercentage) || 0)
+        );
+
+        progressHTML = `
+            <hr class="popup-divider">
+
+            <b>Route Progress: ${percentage.toFixed(1)}%</b>
+
+            <div class="popup-progress">
+                <div class="popup-progress-fill"
+                     style="width:${percentage}%"></div>
+            </div>
+
+            <div class="popup-muted">
+                Covered: ${Number(progress.currentDistanceMetres || 0).toLocaleString("en-IN")} m
+                <br>
+                Remaining: ${Number(progress.remainingRouteMetres || 0).toLocaleString("en-IN")} m
+            </div>
+        `;
+    }
+
+    const latitude = Number(bus.latitude);
+    const longitude = Number(bus.longitude);
+
+    return `
+        <div>
+
+            <div class="popup-heading">
+                🚌 ${escapeHTML(bus.vehicleId || "Unknown Vehicle")}
+            </div>
+
+            ${statusHTML}
+
+            <br>
+
+            <b>Route:</b> ${escapeHTML(getRouteName(bus))}<br>
+            <b>Route ID:</b> ${escapeHTML(bus.routeId || "N/A")}<br>
+            <b>Direction:</b> ${escapeHTML(bus.directionId ?? "N/A")}<br>
+            <b>Speed:</b> ${escapeHTML(speed)}<br>
+
+            ${predictionHTML}
+
+            ${progressHTML}
+
+            <hr class="popup-divider">
+
+            <div class="popup-muted">
+                GPS Age:
+                ${Number.isFinite(Number(bus.dataAgeSeconds))
+                    ? escapeHTML(bus.dataAgeSeconds) + " seconds"
+                    : "Unavailable"
+                }
+                <br>
+                Latitude: ${Number.isFinite(latitude) ? latitude.toFixed(5) : "N/A"}
+                <br>
+                Longitude: ${Number.isFinite(longitude) ? longitude.toFixed(5) : "N/A"}
+                <br>
+                GPS Time: ${escapeHTML(bus.timestamp || "N/A")}
+            </div>
+
+        </div>
+    `;
+}
+
+/* =========================================
+   SEARCH FILTER
+========================================= */
+
+function matchesSearch(bus, type, search) {
+
+    if (!search) return true;
+
+    switch (type) {
+
+        case "vehicleId":
+            return String(bus.vehicleId || "")
+                .toLowerCase().includes(search);
+
+        case "routeId":
+            return String(bus.routeId || "")
+                .toLowerCase().includes(search);
+
+        case "routeName":
+            return [
+                bus.routeName,
+                bus.routeShortName,
+                bus.routeLongName
+            ]
+                .filter(Boolean)
+                .join(" ")
+                .toLowerCase()
+                .includes(search);
+
+        case "tripId":
+            return String(bus.tripId || "")
+                .toLowerCase().includes(search);
+
+        case "directionId":
+            return String(bus.directionId ?? "")
+                .toLowerCase().includes(search);
+
+        case "gpsStatus": {
+            const status = (bus.isStale || bus.dataStatus === "stale")
+                ? "stale"
+                : "live";
+
+            return status.includes(search);
+        }
+
+        default:
+            return true;
+    }
+}
+
+/* =========================================
+   EXACT SCHEDULED JOURNEY MATCHING
+========================================= */
+function isScheduledTrip(bus) {
+    if (!bus) return false;
+
+    const relationship = bus.scheduleRelationship;
+
+    // Exact scheduled trip
+    if (
+        relationship === 0 ||
+        relationship === "0" ||
+        String(relationship).toUpperCase() === "SCHEDULED"
+    ) {
+        return true;
+    }
+
+    // ADDED trip: live GPS available, but scheduled trip not verified
+    if (
+        relationship === 1 ||
+        relationship === "1" ||
+        String(relationship).toUpperCase() === "ADDED"
+    ) {
+        return true;
+    }
+
+    return false;
+}
+
+function getStaticTripId(bus) {
+    if (!isScheduledTrip(bus)) {
+        return null;
+    }
+
+    return bus.tripId == null ? null : String(bus.tripId);
+}
+function getJourneyMatches() {
+
+    if (!journeyMode || !selectedJourney?.legs) {
+        return [];
+    }
+
+    const matches = [];
+
+    selectedJourney.legs.forEach((leg, index) => {
+
+        const expectedTripId = leg.tripId == null
+            ? null
+            : String(leg.tripId);
+
+        const expectedRouteId = leg.routeId == null
+            ? null
+            : String(leg.routeId);
+
+        if (!expectedRouteId) return;
+
+        const matchingBuses = latestVehicles.filter(bus => {
+
+            // Route must match
+            if (String(bus.routeId) !== expectedRouteId) {
+                return false;
+            }
+
+            // Only fresh GPS buses
+            if (bus.isStale === true) {
+                return false;
+            }
+
+            // Valid GPS coordinates required
+            const lat = Number(bus.latitude);
+            const lng = Number(bus.longitude);
+
+            if (
+                !Number.isFinite(lat) ||
+                !Number.isFinite(lng) ||
+                lat === 0 ||
+                lng === 0
+            ) {
+                return false;
+            }
+
+            return true;
+        });
+
+        matchingBuses.forEach(bus => {
+
+            const actualTripId = getStaticTripId(bus);
+
+            const tripVerified = Boolean(
+                expectedTripId &&
+                actualTripId &&
+                String(actualTripId) === expectedTripId
+            );
+
+            matches.push({
+                legIndex: index,
+                leg: leg,
+                bus: bus,
+
+                // Keep exact scheduled trip verification
+                tripVerified: tripVerified,
+
+                // Bus can still appear without exact trip match
+                liveGpsAvailable: true,
+
+                status: tripVerified
+                    ? "SCHEDULED_VERIFIED"
+                    : "LIVE_GPS_UNVERIFIED"
+            });
+        });
+    });
+
+    return matches;
+}
+
+/* =========================================
+   LOAD SELECTED JOURNEY
+========================================= */
+
+function loadSelectedJourney() {
+
+    if (!journeyMode) return;
+
+    try {
+        const stored = sessionStorage.getItem(
+            "transportStackSelectedJourney"
+        );
+
+        if (!stored) {
+            showJourneyError(
+                "No selected journey was found. Please return to Journey Planner and select a journey."
+            );
+            return;
+        }
+
+        selectedJourneyData = JSON.parse(stored);
+        selectedJourney = selectedJourneyData?.journey;
+
+        if (!selectedJourney || !Array.isArray(selectedJourney.legs)) {
+            showJourneyError(
+                "Selected journey information is invalid. Please search again."
+            );
+            return;
+        }
+
+        setupJourneyMode();
+
+    } catch (error) {
+        console.error("Selected journey error:", error);
+
+        showJourneyError(
+            "Unable to load your selected journey. Please select it again."
+        );
+    }
+}
+
+function showJourneyError(message) {
+
+    document.getElementById("journeyPanel").classList.add("visible");
+
+    document.getElementById("journeyTitle").textContent =
+        "Journey unavailable";
+
+    document.getElementById("journeySummary").textContent = message;
+
+    document.getElementById("journeyLegList").innerHTML = "";
+
+    document.getElementById("journeyNotice").textContent = message;
+}
+
+/* =========================================
+   JOURNEY MODE UI
+========================================= */
+
+function setupJourneyMode() {
+
+    document.getElementById("journeyPanel").classList.add("visible");
+
+    document.getElementById("pageHeading").textContent =
+        "Track Your Selected Journey";
+
+    document.getElementById("pageDescription").textContent =
+        "Live tracking for the buses in your selected journey.";
+
+    document.getElementById("journeyTitle").textContent =
+        "Your selected journey";
+
+    const fromName =
+        selectedJourneyData.from?.stopName ||
+        selectedJourney.legs[0]?.from?.stopName ||
+        "Starting point";
+
+    const toName =
+        selectedJourneyData.to?.stopName ||
+        selectedJourney.legs[selectedJourney.legs.length - 1]?.to?.stopName ||
+        "Destination";
+
+    document.getElementById("journeySummary").textContent =
+        `${fromName} → ${toName} | ${selectedJourney.transfers ?? 0} transfer(s) | ${selectedJourneyData.travelDate || ""}`;
+
+    document.getElementById("mapTitle").textContent =
+        "Your Journey Buses";
+
+    document.getElementById("mapDescription").textContent =
+        "Only buses matching your selected scheduled journey will appear here.";
+
+    document.getElementById("totalVehiclesLabel").textContent =
+        "Selected Journey Buses";
+
+    document.getElementById("mapToolbar").style.display = "none";
+
+    document.getElementById("journeyPlannerLink").classList.add("active");
+
+    renderJourneyLegCards();
+}
+
+function renderJourneyLegCards() {
+
+    if (!selectedJourney?.legs) return;
+
+    const container = document.getElementById("journeyLegList");
+
+    container.innerHTML = selectedJourney.legs.map((leg, index) => {
+
+        const from = leg.from?.stopName || "Unknown stop";
+        const to = leg.to?.stopName || "Unknown stop";
+
+        return `
+            <div class="journey-leg-card" id="journey-leg-${index}">
+                <strong>
+                    Bus ${index + 1}: ${escapeHTML(
+                        leg.routeName ||
+                        leg.routeShortName ||
+                        leg.routeId ||
+                        "Bus"
+                    )}
+                </strong>
+
+                <p>
+                    ${escapeHTML(from)} → ${escapeHTML(to)}
+                    <br>
+                    Departure: ${escapeHTML(leg.departureTime || "N/A")}
+                    <br>
+                    Arrival: ${escapeHTML(leg.arrivalTime || "N/A")}
+                </p>
+
+                <span class="leg-status" id="journey-leg-status-${index}">
+                    Checking live bus...
+                </span>
+            </div>
+        `;
+    }).join("");
+}
+
+function updateJourneyLegStatuses() {
+
+    if (!journeyMode || !selectedJourney?.legs) return;
+
+    journeyLegMatches = getJourneyMatches();
+
+    selectedJourney.legs.forEach((leg, index) => {
+
+        const statusElement = document.getElementById(
+            `journey-leg-status-${index}`
+        );
+
+        if (!statusElement) return;
+
+        const matches = journeyLegMatches.filter(
+            item => item.legIndex === index
+        );
+
+        if (matches.length) {
+
+            const bus = matches[0].bus;
+
+            const stale = Boolean(
+                bus.isStale || bus.dataStatus === "stale"
+            );
+
+            statusElement.className = stale
+                ? "leg-status missing"
+                : "leg-status found";
+
+            statusElement.textContent = stale
+                ? `Bus found: ${bus.vehicleId || "Vehicle"} · GPS stale`
+                : `Live bus: ${bus.vehicleId || "Vehicle"}`;
+
+        } else {
+
+            statusElement.className = "leg-status missing";
+
+            if (!leg.tripId || !leg.routeId) {
+                statusElement.textContent =
+                    "Scheduled trip ID unavailable";
+            } else {
+                statusElement.textContent =
+                    "No exact live bus match";
+            }
+        }
+    });
+
+    const foundLegs = new Set(
+        journeyLegMatches.map(item => item.legIndex)
+    );
+
+    const totalLegs = selectedJourney.legs.length;
+    const matchedLegs = foundLegs.size;
+
+    const notice = document.getElementById("journeyNotice");
+
+    if (matchedLegs === totalLegs) {
+        notice.textContent =
+            "All journey legs have an exact scheduled-trip match in the live feed. Select a bus marker to view its GPS and ETA.";
+    } else if (matchedLegs > 0) {
+        notice.textContent =
+            `${matchedLegs} of ${totalLegs} journey legs currently have an exact live bus match. Other buses are not shown unless they match your selected journey.`;
+    } else {
+        notice.textContent =
+            "No exact scheduled bus match is currently available for this journey. The map will not show unrelated buses. Try refreshing later.";
+    }
+}
+
+/* =========================================
+   ROUTE PROGRESS API
+========================================= */
+
+async function fetchRouteProgress(bus) {
+
+    if (!bus.routeId || bus.isStale || bus.dataStatus === "stale") {
+        return null;
+    }
+
+    const routeId = String(bus.routeId);
+
+    if (routeProgressCache.has(routeId)) {
+        return routeProgressCache.get(routeId);
+    }
+
+    try {
+
+        const response = await fetch(
+            `/api/realtime/vehicles/route/${encodeURIComponent(routeId)}/progress`,
+            { cache: "no-store" }
+        );
+
+        if (!response.ok) {
+            throw new Error("HTTP " + response.status);
+        }
+
+        const data = await response.json();
+
+        if (!data.success || !Array.isArray(data.vehicles)) {
+            return null;
+        }
+
+        routeProgressCache.set(routeId, data.vehicles);
+
+        return data.vehicles;
+
+    } catch (error) {
+
+        console.error("Route progress error:", error);
+        return null;
+    }
+}
+
+/* =========================================
+   MARKER SETUP AND POPUP EVENTS
+========================================= */
+
+function setupBusMarker(marker, bus, lat, lng) {
+
+    marker.busData = bus;
+
+    marker.setLatLng([lat, lng]);
+
+    marker.setIcon(createBusIcon(
+        Boolean(bus.isStale || bus.dataStatus === "stale")
+    ));
+
+    marker.setPopupContent(createPopup(bus));
+
+    if (marker.progressListenerAdded) return;
+
+    marker.progressListenerAdded = true;
+
+    marker.on("popupopen", async function () {
+
+        const currentBus = marker.busData;
+
+        if (!currentBus) return;
+
+        if (currentBus.isStale || currentBus.dataStatus === "stale") {
+            return;
+        }
+
+        const cachedVehicles = routeProgressCache.get(
+            String(currentBus.routeId)
+        );
+
+        let progressVehicle = cachedVehicles?.find(
+            item => String(item.vehicleId) === String(currentBus.vehicleId)
+        );
+
+        if (progressVehicle?.routeProgress) {
+            marker.setPopupContent(
+                createPopup(currentBus, progressVehicle.routeProgress)
+            );
+            return;
+        }
+
+        marker.setPopupContent(
+            createPopup(currentBus, null, true)
+        );
+
+        const routeVehicles = await fetchRouteProgress(currentBus);
+
+        if (!marker.isPopupOpen()) return;
+
+        if (!routeVehicles) {
+            marker.setPopupContent(createPopup(currentBus));
+            return;
+        }
+
+        progressVehicle = routeVehicles.find(
+            item => String(item.vehicleId) === String(currentBus.vehicleId)
+        );
+
+        if (!progressVehicle || !progressVehicle.routeProgress) {
+            marker.setPopupContent(createPopup(currentBus));
+            return;
+        }
+
+        marker.setPopupContent(
+            createPopup(currentBus, progressVehicle.routeProgress)
+        );
+    });
+}
+
+/* =========================================
+   RENDER VEHICLES ON MAP
+========================================= */
+
+function renderVehicles() {
+
+    const type = document.getElementById("searchType").value;
+
+    const search = document.getElementById("mapSearch")
+        .value.trim().toLowerCase();
+
+    markerCluster.clearLayers();
+
+    let mapped = 0;
+    let matching = 0;
+    let liveCount = 0;
+
+    const visibleIds = new Set();
+    const visibleMarkers = [];
+
+    let vehiclesToDisplay = latestVehicles;
+
+    if (journeyMode) {
+
+        journeyLegMatches = getJourneyMatches();
+
+        vehiclesToDisplay = journeyLegMatches.map(item => ({
+            ...item.bus,
+            _journeyLegIndex: item.legIndex
+        }));
+
+        updateJourneyLegStatuses();
+    }
+
+    vehiclesToDisplay.forEach(bus => {
+
+        const id = bus.vehicleId || bus.tripId;
+
+        if (!id || !matchesSearch(bus, type, search)) return;
+
+        matching++;
+
+        const lat = Number(bus.latitude);
+        const lng = Number(bus.longitude);
+
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+        if (lat < 28.0 || lat > 29.5 || lng < 76.0 || lng > 78.0) return;
+
+        mapped++;
+
+        const stale = Boolean(bus.isStale || bus.dataStatus === "stale");
+
+        if (!stale) liveCount++;
+
+        visibleIds.add(id);
+
+        let marker = busMarkers.get(id);
+
+        if (!marker) {
+
+            marker = L.marker([lat, lng], {
+                icon: createBusIcon(stale)
+            });
+
+            marker.bindPopup(createPopup(bus), {
+                maxWidth: 310,
+                autoPan: true
+            });
+
+            busMarkers.set(id, marker);
+        }
+
+        setupBusMarker(marker, bus, lat, lng);
+
+        markerCluster.addLayer(marker);
+
+        visibleMarkers.push(marker);
+    });
+
+    /* Remove markers not in current display */
+
+    for (const [id, marker] of busMarkers) {
+
+        if (!visibleIds.has(id)) {
+            markerCluster.removeLayer(marker);
+            busMarkers.delete(id);
+        }
+    }
+
+    /* Update dashboard cards */
+
+    document.getElementById("totalVehicles").textContent =
+        journeyMode
+            ? matching.toLocaleString("en-IN")
+            : latestVehicles.length.toLocaleString("en-IN");
+
+    document.getElementById("mappedVehicles").textContent =
+        mapped.toLocaleString("en-IN");
+
+    document.getElementById("liveVehicles").textContent =
+        liveCount.toLocaleString("en-IN");
+
+    /* Update result text */
+
+    if (journeyMode) {
+
+        document.getElementById("resultInfo").textContent =
+            `Showing ${mapped} exact matching journey bus(es) with valid Delhi GPS coordinates.`;
+
+    } else {
+
+        document.getElementById("resultInfo").textContent = search
+            ? `Found ${matching.toLocaleString("en-IN")} matching vehicles | ${mapped.toLocaleString("en-IN")} displayed on map`
+            : `Showing ${mapped.toLocaleString("en-IN")} vehicles with valid Delhi GPS coordinates`;
+    }
+
+    /* Zoom to visible buses */
+
+    if (visibleMarkers.length === 1) {
+
+        const marker = visibleMarkers[0];
+
+        map.setView(marker.getLatLng(), 15);
+
+    } else if (visibleMarkers.length > 1) {
+
+        const bounds = L.featureGroup(visibleMarkers).getBounds();
+
+        map.fitBounds(bounds, {
+            padding: [60, 60],
+            maxZoom: 14
+        });
+
+    } else if (!journeyMode && search) {
+
+        map.setView([28.6139, 77.2090], 11);
+    }
+}
+
+/* =========================================
+   SEARCH CONTROLS
+========================================= */
+
+function clearSearch() {
+
+    document.getElementById("mapSearch").value = "";
+
+    renderVehicles();
+
+    if (!journeyMode) {
+        map.setView([28.6139, 77.2090], 11);
+    }
+}
+
+function updateSearchPlaceholder() {
+
+    const type = document.getElementById("searchType").value;
+
+    const input = document.getElementById("mapSearch");
+
+    const placeholders = {
+        vehicleId: "Enter vehicle number...",
+        routeId: "Enter route ID...",
+        routeName: "Enter route name...",
+        tripId: "Enter trip ID...",
+        directionId: "Enter direction ID (0 or 1)...",
+        gpsStatus: "Enter live or stale..."
+    };
+
+    input.placeholder = placeholders[type] || "Search...";
+
+    input.value = "";
+
+    renderVehicles();
+}
+
+/* =========================================
+   LOAD LIVE VEHICLES API
+========================================= */
+
+async function loadLiveVehicles() {
+
+    if (loading) return;
+
+    loading = true;
+
+    const status = document.getElementById("feedStatus");
+
+    status.textContent = "● UPDATING...";
+    status.style.color = "#d18a19";
+
+    try {
+
+        const response = await fetch("/api/realtime/vehicles", {
+            cache: "no-store"
+        });
+
+        if (!response.ok) {
+            throw new Error("HTTP " + response.status);
+        }
+
+        const data = await response.json();
+
+        if (!data.success) {
+            throw new Error(data.message || "Live feed failed");
+        }
+
+        latestVehicles = Array.isArray(data.vehicles)
+            ? data.vehicles
+            : [];
+
+        /* Clear route progress cache after fresh feed */
+        routeProgressCache.clear();
+
+        document.getElementById("lastUpdated").textContent =
+            new Date().toLocaleTimeString("en-IN");
+
+        renderVehicles();
+
+        status.textContent = "● LIVE FEED CONNECTED";
+        status.style.color = "#16a36a";
+
+    } catch (error) {
+
+        console.error("Live map error:", error);
+
+        status.textContent = "● FEED ERROR";
+        status.style.color = "#dc2626";
+
+    } finally {
+
+        loading = false;
+    }
+}
+
+/* =========================================
+   EVENT LISTENERS
+========================================= */
+
+document.getElementById("mapSearch")
+    .addEventListener("input", renderVehicles);
+
+document.getElementById("searchType")
+    .addEventListener("change", updateSearchPlaceholder);
+
+/* =========================================
+   START APPLICATION
+========================================= */
+
+if (journeyMode) {
+    loadSelectedJourney();
+}
+
+loadLiveVehicles();
+
+/* Refresh live bus data every 30 seconds */
+setInterval(loadLiveVehicles, 30000);
+
+/* Fix map sizing after initial page rendering */
+setTimeout(() => {
+    map.invalidateSize();
+}, 300);
+
+</script>
+
+</body>
+</html>

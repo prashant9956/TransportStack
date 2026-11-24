@@ -1,0 +1,296 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TransportStack | Nearest Stops</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        body { background:#f1f5f9; font-family:Arial,sans-serif; color:#172033; }
+        .navbar { background:#101d35; }
+        .main-container { max-width:1600px; margin:30px auto; }
+        .stat-card,.table-card { background:white; border:0; border-radius:14px; padding:20px; box-shadow:0 3px 15px #0000000a; }
+        .stat-number { font-size:28px; font-weight:700; }
+        .table th { background:#f8fafc; white-space:nowrap; font-size:13px; }
+        .table td { vertical-align:middle; white-space:nowrap; font-size:13px; }
+        .stop-name { font-weight:600; color:#172b4d; }
+        .live-dot { display:inline-block; width:9px; height:9px; background:#16a34a; border-radius:50%; margin-right:6px; }
+        .filter-input { min-width:180px; }
+        .distance { font-weight:700; color:#2563eb; }
+        .pagination { margin-bottom:0; }
+        @media(max-width:650px) { .main-container { margin:18px auto; } }
+    </style>
+</head>
+<body>
+
+<nav class="navbar navbar-dark px-3 py-3">
+    <div class="container-fluid">
+        <a class="navbar-brand fw-bold" href="/">TransportStack</a>
+        <div class="d-flex gap-3">
+            <a href="/live-map" class="btn btn-outline-light btn-sm">Live Map</a>
+            <a href="/nearest-stops" class="btn btn-primary btn-sm">Nearest Stops</a>
+        </div>
+    </div>
+</nav>
+
+<main class="container-fluid main-container px-3 px-lg-4">
+
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">Nearest Bus Stops</h2>
+            <p class="text-secondary mb-0">Live vehicles matched with Delhi GTFS stops</p>
+        </div>
+        <div>
+            <span class="live-dot"></span>
+            <span class="text-success fw-semibold" id="feedLabel">Connecting...</span>
+            <button class="btn btn-primary ms-3" onclick="loadVehicles()">Refresh</button>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="stat-card">
+                <div class="text-secondary">Total Vehicles</div>
+                <div class="stat-number" id="totalVehicles">--</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stat-card">
+                <div class="text-secondary">Nearest Stops Matched</div>
+                <div class="stat-number text-success" id="matchedVehicles">--</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stat-card">
+                <div class="text-secondary">Last Updated</div>
+                <div class="stat-number fs-5 mt-2" id="lastUpdated">--</div>
+            </div>
+        </div>
+    </div>
+
+    <section class="table-card">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
+            <div>
+                <h5 class="fw-bold mb-1">Live Vehicle Details</h5>
+                <small class="text-secondary" id="resultCount">Waiting for data...</small>
+            </div>
+            <span class="badge bg-primary">Auto refresh: 30 sec</span>
+        </div>
+
+        <div class="row g-2 mb-3">
+            <div class="col-lg-4">
+                <input id="searchInput" class="form-control filter-input"
+                    placeholder="Search vehicle, stop or trip..." oninput="applyFilters()">
+            </div>
+            <div class="col-lg-3">
+                <input id="routeInput" class="form-control filter-input"
+                    placeholder="Filter by route ID" oninput="applyFilters()">
+            </div>
+            <div class="col-lg-3">
+                <select id="sortInput" class="form-select" onchange="applyFilters()">
+                    <option value="distance">Nearest stop first</option>
+                    <option value="vehicle">Vehicle ID</option>
+                    <option value="route">Route ID</option>
+                </select>
+            </div>
+            <div class="col-lg-2">
+                <select id="pageSize" class="form-select" onchange="changePageSize()">
+                    <option value="25">25 per page</option>
+                    <option value="50" selected>50 per page</option>
+                    <option value="100">100 per page</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="status" class="alert alert-info">Loading live vehicle data...</div>
+
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Vehicle</th>
+                        <th>Route</th>
+                        <th>Trip</th>
+                        <th>GPS Status</th>
+                        <th>Nearest Stop</th>
+                        <th>Distance</th>
+                        <th>Stop Sequence</th>
+                        <th>Matched Trip</th>
+                    </tr>
+                </thead>
+                <tbody id="vehicleTable">
+                    <tr><td colspan="8" class="text-center py-4">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3">
+            <small class="text-secondary" id="pageInfo"></small>
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-primary btn-sm" id="prevBtn" onclick="changePage(-1)">Previous</button>
+                <button class="btn btn-outline-primary btn-sm" id="nextBtn" onclick="changePage(1)">Next</button>
+            </div>
+        </div>
+    </section>
+</main>
+
+<script>
+let allVehicles = [];
+let filteredVehicles = [];
+let currentPage = 1;
+let pageSize = 50;
+let loading = false;
+
+function escapeHTML(value) {
+    return String(value ?? "").replace(/[&<>"']/g, char => ({
+        "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"
+    })[char]);
+}
+
+function formatDistance(metres) {
+    if (!Number.isFinite(Number(metres))) return "N/A";
+    const value = Number(metres);
+    return value >= 1000
+        ? (value / 1000).toFixed(2) + " km"
+        : Math.round(value) + " m";
+}
+
+async function loadVehicles() {
+    if (loading) return;
+    loading = true;
+
+    const status = document.getElementById("status");
+    status.className = "alert alert-info";
+    status.textContent = "Fetching latest vehicle data...";
+
+    try {
+        const response = await fetch("/api/realtime/vehicles/nearest-stops", {
+            cache: "no-store"
+        });
+
+        if (!response.ok) throw new Error("HTTP " + response.status);
+
+        const data = await response.json();
+        if (!data.success) throw new Error(data.message || "API failed");
+
+        allVehicles = Array.isArray(data.vehicles) ? data.vehicles : [];
+
+        document.getElementById("totalVehicles").textContent =
+            Number(data.count ?? allVehicles.length).toLocaleString("en-IN");
+
+        document.getElementById("matchedVehicles").textContent =
+            allVehicles.filter(v => v.nearestStop).length.toLocaleString("en-IN");
+
+        document.getElementById("lastUpdated").textContent =
+            new Date().toLocaleTimeString("en-IN");
+
+        document.getElementById("feedLabel").textContent = "LIVE";
+
+        applyFilters();
+
+        status.className = "alert alert-success";
+        status.textContent = "Live vehicle data updated successfully.";
+
+    } catch (error) {
+        console.error("Nearest stops error:", error);
+        status.className = "alert alert-danger";
+        status.textContent = "Unable to load data: " + error.message;
+        document.getElementById("feedLabel").textContent = "ERROR";
+    } finally {
+        loading = false;
+    }
+}
+
+function applyFilters() {
+    const search = document.getElementById("searchInput").value.trim().toLowerCase();
+    const route = document.getElementById("routeInput").value.trim().toLowerCase();
+    const sort = document.getElementById("sortInput").value;
+
+    filteredVehicles = allVehicles.filter(v => {
+        const stop = v.nearestStop || {};
+
+        const searchable = [
+            v.vehicleId, v.routeId, v.tripId,
+            stop.stopName, stop.stopId, stop.matchedTripId
+        ].join(" ").toLowerCase();
+
+        return searchable.includes(search) &&
+            String(v.routeId || "").toLowerCase().includes(route);
+    });
+
+    filteredVehicles.sort((a, b) => {
+        if (sort === "vehicle")
+            return String(a.vehicleId || "").localeCompare(String(b.vehicleId || ""));
+        if (sort === "route")
+            return String(a.routeId || "").localeCompare(String(b.routeId || ""));
+
+        const da = a.nearestStop?.distanceMetres ?? Infinity;
+        const db = b.nearestStop?.distanceMetres ?? Infinity;
+        return da - db;
+    });
+
+    currentPage = 1;
+    renderTable();
+}
+
+function renderTable() {
+    const tbody = document.getElementById("vehicleTable");
+    const totalPages = Math.max(1, Math.ceil(filteredVehicles.length / pageSize));
+
+    currentPage = Math.min(currentPage, totalPages);
+
+    const start = (currentPage - 1) * pageSize;
+    const pageVehicles = filteredVehicles.slice(start, start + pageSize);
+
+    if (!pageVehicles.length) {
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-4">No matching vehicles found.</td></tr>`;
+    } else {
+        tbody.innerHTML = pageVehicles.map(v => {
+            const stop = v.nearestStop;
+            const stale = v.isStale || v.dataStatus === "stale";
+            const gps = stale
+                ? '<span class="badge bg-warning text-dark">Stale</span>'
+                : '<span class="badge bg-success">Live</span>';
+
+            return `
+                <tr>
+                    <td class="fw-semibold">${escapeHTML(v.vehicleId || "N/A")}</td>
+                    <td>${escapeHTML(v.routeId || "N/A")}</td>
+                    <td>${escapeHTML(v.tripId || "N/A")}</td>
+                    <td>${gps}<br><small class="text-secondary">${Number.isFinite(Number(v.dataAgeSeconds)) ? escapeHTML(v.dataAgeSeconds) + " sec ago" : ""}</small></td>
+                    <td class="stop-name">${escapeHTML(stop?.stopName || "Not matched")}</td>
+                    <td class="distance">${stop ? formatDistance(stop.distanceMetres) : "N/A"}</td>
+                    <td>${stop ? escapeHTML(stop.stopSequence) : "N/A"}</td>
+                    <td>${escapeHTML(stop?.matchedTripId || "N/A")}</td>
+                </tr>`;
+        }).join("");
+    }
+
+    document.getElementById("resultCount").textContent =
+        filteredVehicles.length.toLocaleString("en-IN") + " matching vehicles";
+
+    document.getElementById("pageInfo").textContent =
+        `Page ${currentPage} of ${totalPages} | Showing ${pageVehicles.length} vehicles`;
+
+    document.getElementById("prevBtn").disabled = currentPage <= 1;
+    document.getElementById("nextBtn").disabled = currentPage >= totalPages;
+}
+
+function changePage(direction) {
+    currentPage += direction;
+    renderTable();
+}
+
+function changePageSize() {
+    pageSize = Number(document.getElementById("pageSize").value);
+    currentPage = 1;
+    renderTable();
+}
+
+loadVehicles();
+setInterval(loadVehicles, 30000);
+</script>
+</body>
+</html>

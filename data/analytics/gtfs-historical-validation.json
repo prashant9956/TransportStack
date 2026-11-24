@@ -1,0 +1,136 @@
+{
+  "staticRouteCount": 2574,
+  "historicalRouteCount": 2200,
+  "matchedRouteCount": 2195,
+  "unmatchedRouteCount": 5,
+  "matchPercentage": 99.77,
+  "matchedSample": [
+    {
+      "routeId": "1",
+      "shortName": "102ADOWN",
+      "longName": "102ADOWN",
+      "agencyId": "DIMTS",
+      "historicalSpeed": 10.91,
+      "historicalRecords": 5315
+    },
+    {
+      "routeId": "4",
+      "shortName": "102AUP",
+      "longName": "102AUP",
+      "agencyId": "DIMTS",
+      "historicalSpeed": 12.95,
+      "historicalRecords": 9321
+    },
+    {
+      "routeId": "5",
+      "shortName": "102DOWN",
+      "longName": "102DOWN",
+      "agencyId": "DIMTS",
+      "historicalSpeed": 10.75,
+      "historicalRecords": 10573
+    },
+    {
+      "routeId": "6",
+      "shortName": "102LSTLDOWN",
+      "longName": "102LSTLDOWN",
+      "agencyId": "DIMTS",
+      "historicalSpeed": 7.15,
+      "historicalRecords": 1456
+    },
+    {
+      "routeId": "7",
+      "shortName": "102LSTLUP",
+      "longName": "102LSTLUP",
+      "agencyId": "DIMTS",
+      "historicalSpeed": 10.9,
+      "historicalRecords": 2593
+    },
+    {
+      "routeId": "8",
+      "shortName": "102STLDOWN",
+      "longName": "102STLDOWN",
+      "agencyId": "DIMTS",
+      "historicalSpeed": 8.22,
+      "historicalRecords": 2067
+    },
+    {
+      "routeId": "9",
+      "shortName": "102STLUP",
+      "longName": "102STLUP",
+      "agencyId": "DIMTS",
+      "historicalSpeed": 9.78,
+      "historicalRecords": 2518
+    },
+    {
+      "routeId": "10",
+      "shortName": "102UP",
+      "longName": "102UP",
+      "agencyId": "DIMTS",
+      "historicalSpeed": 11.89,
+      "historicalRecords": 10978
+    },
+    {
+      "routeId": "14",
+      "shortName": "103LSTLDOWN",
+      "longName": "103LSTLDOWN",
+      "agencyId": "DIMTS",
+      "historicalSpeed": 4.58,
+      "historicalRecords": 62
+    },
+    {
+      "routeId": "15",
+      "shortName": "103LSTLUP",
+      "longName": "103LSTLUP",
+      "agencyId": "DIMTS",
+      "historicalSpeed": 11.03,
+      "historicalRecords": 56
+    },
+    {
+      "routeId": "24",
+      "shortName": "106LSTLDOWN",
+      "longName": "106LSTLDOWN",
+      "agencyId": "DIMTS",
+      "historicalSpeed": 9.24,
+      "historicalRecords": 2584
+    },
+    {
+      "routeId": "25",
+      "shortName": "106LSTLUP",
+      "longName": "106LSTLUP",
+      "agencyId": "DIMTS",
+      "historicalSpeed": 9,
+      "historicalRecords": 4018
+    },
+    {
+      "routeId": "29",
+      "shortName": "107DOWN",
+      "longName": "107DOWN",
+      "agencyId": "DIMTS",
+      "historicalSpeed": 10.76,
+      "historicalRecords": 29248
+    },
+    {
+      "routeId": "30",
+      "shortName": "107STLDOWN",
+      "longName": "107STLDOWN",
+      "agencyId": "DIMTS",
+      "historicalSpeed": 7.58,
+      "historicalRecords": 3934
+    },
+    {
+      "routeId": "31",
+      "shortName": "107STLUP",
+      "longName": "107STLUP",
+      "agencyId": "DIMTS",
+      "historicalSpeed": 9.12,
+      "historicalRecords": 5588
+    }
+  ],
+  "unmatchedSample": [
+    "972",
+    "2996",
+    "3452",
+    "3541",
+    "3549"
+  ]
+}

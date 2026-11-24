@@ -1,0 +1,956 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TransportStack | Trip Route Map</title>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f1f5f9;
+            color: #172033;
+        }
+
+        .navbar {
+            background: #101d35;
+            color: white;
+            padding: 17px 25px;
+        }
+
+        .navbar span { color: #60a5fa; }
+
+        .container {
+            max-width: 1500px;
+            padding: 22px;
+            margin: auto;
+        }
+
+        .heading { margin-bottom: 20px; }
+        .heading h1 { font-size: 26px; margin-bottom: 7px; }
+        .heading p { color: #64748b; font-size: 14px; }
+
+        .search-box {
+            background: white;
+            padding: 18px;
+            border-radius: 12px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 18px;
+        }
+
+        .search-box input {
+            flex: 1;
+            min-width: 250px;
+            padding: 13px;
+            border: 1px solid #cbd5e1;
+            border-radius: 7px;
+            font-size: 14px;
+        }
+
+        .search-box button {
+            padding: 13px 24px;
+            background: #2563eb;
+            border: none;
+            color: white;
+            border-radius: 7px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .search-box button:hover { background: #1d4ed8; }
+        .search-box button:disabled { opacity: .6; cursor: not-allowed; }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 14px;
+            margin-bottom: 18px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 18px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px #0000000c;
+        }
+
+        .stat-card p {
+            color: #64748b;
+            font-size: 13px;
+            margin-bottom: 9px;
+        }
+
+        .stat-card h2 { font-size: 22px; }
+
+        .content {
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            gap: 16px;
+        }
+
+        .map-wrapper, .stops-panel {
+            background: white;
+            padding: 12px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px #0000000c;
+        }
+
+        #map {
+            width: 100%;
+            height: 620px;
+            border-radius: 8px;
+        }
+
+        .stops-panel h3 { margin: 8px 5px 15px; }
+
+        #stopsList {
+            max-height: 570px;
+            overflow-y: auto;
+        }
+
+        .stop-item {
+            padding: 13px 9px;
+            border-bottom: 1px solid #e2e8f0;
+            cursor: pointer;
+        }
+
+        .stop-item:hover { background: #eff6ff; }
+        .stop-item strong { display: block; font-size: 13px; margin-bottom: 5px; }
+        .stop-item small { color: #64748b; }
+
+        .message {
+            padding: 12px;
+            margin-bottom: 15px;
+            border-radius: 7px;
+            display: none;
+            font-size: 14px;
+        }
+
+        .error { background: #fee2e2; color: #991b1b; }
+        .success { background: #dcfce7; color: #166534; }
+
+        .legend {
+            display: flex;
+            gap: 18px;
+            flex-wrap: wrap;
+            padding: 12px 4px;
+            font-size: 13px;
+        }
+
+        .legend span { display: flex; align-items: center; gap: 6px; }
+
+        .dot {
+            width: 11px;
+            height: 11px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .bus-marker { background: transparent; border: none; }
+
+        .bus-marker-inner {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid white;
+            border-radius: 50%;
+            box-shadow: 0 2px 8px #00000055;
+            font-size: 19px;
+        }
+
+        .bus-live { background: #7c3aed; }
+        .bus-delayed { background: #f59e0b; }
+        .bus-stale { background: #64748b; }
+
+        .live-status {
+            margin: 4px;
+            padding: 10px 11px;
+            border-radius: 7px;
+            background: #f1f5f9;
+            color: #475569;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        .footer {
+            text-align: center;
+            color: #64748b;
+            font-size: 12px;
+            margin-top: 18px;
+        }
+
+        @media(max-width: 850px) {
+            .content { grid-template-columns: 1fr; }
+            .stats { grid-template-columns: repeat(2, 1fr); }
+            #map { height: 480px; }
+            #stopsList { max-height: 300px; }
+        }
+
+        @media(max-width: 500px) {
+            .container { padding: 12px; }
+            .stats { grid-template-columns: 1fr 1fr; }
+            .search-box button { width: 100%; }
+        }
+    </style>
+</head>
+
+<body>
+
+<nav class="navbar">
+    <h2>Transport<span>Stack</span></h2>
+</nav>
+
+<main class="container">
+
+    <div class="heading">
+        <h1>Bus Trip Route Explorer</h1>
+        <p>Explore actual GTFS bus route geometry and live vehicle tracking</p>
+    </div>
+
+    <div class="search-box">
+        <input type="text" id="tripId"
+            placeholder="Enter Trip ID"
+            value="2583_FULL_00_00">
+
+        <button id="loadButton" onclick="loadTrip()">Load Route</button>
+    </div>
+
+    <div id="message" class="message"></div>
+
+    <section class="stats">
+        <div class="stat-card">
+            <p>Route Number</p>
+            <h2 id="routeNumber">--</h2>
+        </div>
+
+        <div class="stat-card">
+            <p>Shape Points</p>
+            <h2 id="shapeCount">--</h2>
+        </div>
+
+        <div class="stat-card">
+            <p>Total Stops</p>
+            <h2 id="stopCount">--</h2>
+        </div>
+
+        <div class="stat-card">
+            <p>Trip Destination</p>
+            <h2 id="destination">--</h2>
+        </div>
+    </section>
+
+    <div class="content">
+
+        <div class="map-wrapper">
+            <div id="map"></div>
+
+            <div class="legend">
+                <span><i class="dot" style="background:#2563eb"></i> Bus Route</span>
+                <span><i class="dot" style="background:#16a34a"></i> Starting Stop</span>
+                <span><i class="dot" style="background:#dc2626"></i> Final Stop</span>
+                <span><i class="dot" style="background:#f59e0b"></i> Intermediate Stops</span>
+                <span><i class="dot" style="background:#7c3aed"></i> Live Bus</span>
+                <span><i class="dot" style="background:#f59e0b"></i> Delayed Bus</span>
+                <span><i class="dot" style="background:#64748b"></i> Stale Bus</span>
+            </div>
+
+            <div id="liveStatus" class="live-status">
+                Live bus tracking will start after the trip loads.
+            </div>
+        </div>
+
+        <aside class="stops-panel">
+            <h3>Route Stops</h3>
+
+            <div id="stopsList">
+                <p style="padding:10px;color:#64748b">
+                    Load a trip to view stops.
+                </p>
+            </div>
+        </aside>
+
+    </div>
+
+    <div class="footer">
+        Map © OpenStreetMap contributors | GTFS Static + Realtime Data
+    </div>
+
+</main>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+    const map = L.map("map").setView([28.6139, 77.2090], 11);
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "&copy; OpenStreetMap contributors",
+        maxZoom: 19
+    }).addTo(map);
+
+    let routeLayer = null;
+    let stopMarkers = [];
+    let liveBusMarkers = new Map();
+
+    let activeRouteId = null;
+    let liveBusTimer = null;
+    let liveBusRequestRunning = false;
+
+    let currentRouteStops = [];
+
+    function showMessage(text, type) {
+        const message = document.getElementById("message");
+
+        message.textContent = text;
+        message.className = "message " + type;
+        message.style.display = "block";
+    }
+
+    function clearMap() {
+        if (routeLayer) {
+            map.removeLayer(routeLayer);
+            routeLayer = null;
+        }
+
+        stopMarkers.forEach(marker => map.removeLayer(marker));
+        stopMarkers = [];
+
+        liveBusMarkers.forEach(marker => map.removeLayer(marker));
+        liveBusMarkers.clear();
+
+        if (liveBusTimer) {
+            clearInterval(liveBusTimer);
+            liveBusTimer = null;
+        }
+
+        activeRouteId = null;
+        currentRouteStops = [];
+        liveBusRequestRunning = false;
+    }
+
+    async function loadTrip() {
+        const tripId = document.getElementById("tripId").value.trim();
+        const button = document.getElementById("loadButton");
+
+        if (!tripId) {
+            showMessage("Please enter a Trip ID.", "error");
+            return;
+        }
+
+        button.disabled = true;
+        button.textContent = "Loading...";
+
+        try {
+            const response = await fetch(
+                "/api/shapes/trips/" + encodeURIComponent(tripId) + "/shape"
+            );
+
+            const data = await response.json();
+
+            if (!response.ok || !data.success) {
+                throw new Error(data.message || "Unable to load trip");
+            }
+
+            if (!data.coordinates || data.coordinates.length < 2) {
+                throw new Error("Insufficient route coordinates");
+            }
+
+            if (!data.trip || !data.trip.routeId) {
+                throw new Error("Trip route information is missing");
+            }
+
+            clearMap();
+
+            const validCoordinates = data.coordinates
+                .filter(point =>
+                    Array.isArray(point) &&
+                    point.length === 2 &&
+                    Number.isFinite(Number(point[0])) &&
+                    Number.isFinite(Number(point[1]))
+                )
+                .map(point => [Number(point[0]), Number(point[1])]);
+
+            if (validCoordinates.length < 2) {
+                throw new Error("No valid route coordinates found");
+            }
+
+            routeLayer = L.polyline(validCoordinates, {
+                color: "#2563eb",
+                weight: 5,
+                opacity: 0.85
+            }).addTo(map);
+
+            currentRouteStops = Array.isArray(data.stops)
+                ? data.stops.filter(stop =>
+                    stop.latitude !== null &&
+                    stop.latitude !== undefined &&
+                    stop.longitude !== null &&
+                    stop.longitude !== undefined &&
+                    Number.isFinite(Number(stop.latitude)) &&
+                    Number.isFinite(Number(stop.longitude))
+                )
+                : [];
+
+            currentRouteStops.sort((a, b) =>
+                Number(a.stopSequence ?? 0) - Number(b.stopSequence ?? 0)
+            );
+
+            currentRouteStops.forEach((stop, index) => {
+                const color = index === 0
+                    ? "#16a34a"
+                    : index === currentRouteStops.length - 1
+                        ? "#dc2626"
+                        : "#f59e0b";
+
+                const marker = L.circleMarker(
+                    [Number(stop.latitude), Number(stop.longitude)],
+                    {
+                        radius: 8,
+                        color: "#ffffff",
+                        weight: 2,
+                        fillColor: color,
+                        fillOpacity: 1
+                    }
+                ).addTo(map);
+
+                marker.bindPopup(`
+                    <b>${escapeHTML(stop.stopName)}</b><br>
+                    Stop ID: ${escapeHTML(stop.stopId)}<br>
+                    Arrival: ${escapeHTML(stop.arrivalTime || "N/A")}<br>
+                    Departure: ${escapeHTML(stop.departureTime || "N/A")}
+                `);
+
+                stopMarkers.push(marker);
+            });
+
+            map.fitBounds(routeLayer.getBounds(), {
+                padding: [30, 30]
+            });
+
+            document.getElementById("routeNumber").textContent =
+                data.route?.routeShortName || data.trip.routeId;
+
+            document.getElementById("shapeCount").textContent =
+                validCoordinates.length;
+
+            document.getElementById("stopCount").textContent =
+                currentRouteStops.length;
+
+            document.getElementById("destination").textContent =
+                data.trip.tripHeadsign || "N/A";
+
+            renderStops(currentRouteStops);
+
+            activeRouteId = String(data.trip.routeId);
+
+            startLiveBusTracking();
+
+            showMessage(
+                "Trip loaded successfully. Backend route progress and live GPS tracking active.",
+                "success"
+            );
+
+        } catch (error) {
+            console.error("Trip Map Error:", error);
+            showMessage(error.message, "error");
+
+        } finally {
+            button.disabled = false;
+            button.textContent = "Load Route";
+        }
+    }
+
+    function formatDistance(distance) {
+        if (distance === null || distance === undefined ||
+            !Number.isFinite(Number(distance))) {
+            return "N/A";
+        }
+
+        const metres = Number(distance);
+
+        if (metres < 1000) {
+            return `${Math.round(metres)} metres`;
+        }
+
+        return `${(metres / 1000).toFixed(2)} km`;
+    }
+
+    function getVehicleStatus(vehicle) {
+        const status = String(vehicle.dataStatus || "").toLowerCase();
+
+        if (
+            vehicle.isStale === true ||
+            status === "stale" ||
+            status === "unknown"
+        ) {
+            return {
+                key: "stale",
+                label: status === "unknown" ? "GPS Status Unknown" : "Stale GPS",
+                color: "#64748b",
+                markerClass: "bus-stale"
+            };
+        }
+
+        if (status === "delayed") {
+            return {
+                key: "delayed",
+                label: "Delayed GPS",
+                color: "#d97706",
+                markerClass: "bus-delayed"
+            };
+        }
+
+        return {
+            key: "live",
+            label: "Live GPS",
+            color: "#7c3aed",
+            markerClass: "bus-live"
+        };
+    }
+
+    function getSpeedDetails(vehicle) {
+        const gpsStatus = getVehicleStatus(vehicle);
+
+        if (gpsStatus.key === "stale") {
+            return {
+                speedText: "Unavailable",
+                status: gpsStatus.label,
+                statusColor: gpsStatus.color,
+                source: "Old or unknown location data"
+            };
+        }
+
+        const speed = vehicle.speed;
+
+        const validSpeed =
+            speed !== null &&
+            speed !== undefined &&
+            speed !== "" &&
+            Number.isFinite(Number(speed));
+
+        if (!validSpeed) {
+            return {
+                speedText: "Unavailable",
+                status: gpsStatus.label + " | Speed unavailable",
+                statusColor: gpsStatus.color,
+                source: "No reliable speed data"
+            };
+        }
+
+        const numericSpeed = Number(speed);
+
+        const source = vehicle.speedSource === "gps-calculated"
+            ? "GPS Calculated"
+            : vehicle.speedSource === "feed"
+                ? "OTD Feed"
+                : "Unknown";
+
+        if (numericSpeed <= 2) {
+            return {
+                speedText: `${numericSpeed.toFixed(1)} km/h`,
+                status: gpsStatus.label + " | Nearly Stationary",
+                statusColor: gpsStatus.color,
+                source
+            };
+        }
+
+        return {
+            speedText: `${numericSpeed.toFixed(1)} km/h`,
+            status: gpsStatus.label + " | Moving",
+            statusColor: gpsStatus.color,
+            source
+        };
+    }
+
+    function createBusIcon(vehicle) {
+        const status = getVehicleStatus(vehicle);
+
+        return L.divIcon({
+            className: "bus-marker",
+            html: `<div class="bus-marker-inner ${status.markerClass}">🚌</div>`,
+            iconSize: [36, 36],
+            iconAnchor: [18, 18]
+        });
+    }
+
+    function getGPSAgeText(vehicle) {
+        if (
+            vehicle.dataAgeSeconds !== null &&
+            vehicle.dataAgeSeconds !== undefined &&
+            Number.isFinite(Number(vehicle.dataAgeSeconds))
+        ) {
+            const age = Number(vehicle.dataAgeSeconds);
+
+            if (age < 60) return `${age} seconds ago`;
+            if (age < 3600) return `${Math.floor(age / 60)} minutes ago`;
+
+            return `${Math.floor(age / 3600)} hours ago`;
+        }
+
+        return "Unknown";
+    }
+
+    function getRouteProgressHTML(progress) {
+        if (!progress || progress.matched !== true) {
+            return `
+                <hr style="margin:10px 0;border:0;border-top:1px solid #ddd">
+
+                <b style="color:#dc2626">Route Progress Unavailable</b><br>
+
+                <span style="color:#64748b">
+                    ${escapeHTML(progress?.reason || "Vehicle could not be matched to a route shape.")}
+                </span>
+            `;
+        }
+
+        const percentage = Math.max(
+            0,
+            Math.min(100, Number(progress.progressPercentage) || 0)
+        );
+
+        const nearest = progress.nearestStop;
+        const next = progress.nextStop;
+
+        let nearestHTML = "";
+
+        if (nearest) {
+            nearestHTML = `
+                <hr style="margin:10px 0;border:0;border-top:1px solid #ddd">
+
+                <b>📍 Nearest Stop</b><br>
+
+                ${escapeHTML(nearest.stopName)}<br>
+
+                Stop ID: ${escapeHTML(nearest.stopId)}<br>
+
+                Distance:
+                <b>${formatDistance(nearest.distanceMetres)}</b>
+            `;
+        }
+
+        let nextHTML = "";
+
+        if (next) {
+            nextHTML = `
+                <hr style="margin:10px 0;border:0;border-top:1px solid #ddd">
+
+                <b style="color:#2563eb">➡️ Next Stop</b><br>
+
+                <b>${escapeHTML(next.stopName)}</b><br>
+
+                Stop ID: ${escapeHTML(next.stopId)}<br>
+
+                Route Distance:
+                <b>${formatDistance(next.distanceMetres)}</b><br>
+
+                Estimated Arrival:
+                <b style="color:${next.available ? "#16a34a" : "#dc2626"}">
+                    ${escapeHTML(next.eta || "Unavailable")}
+                </b><br>
+
+                ${!next.available && next.reason ? `
+                    <small style="color:#64748b">
+                        ${escapeHTML(next.reason)}
+                    </small>
+                ` : ""}
+            `;
+        } else {
+            nextHTML = `
+                <hr style="margin:10px 0;border:0;border-top:1px solid #ddd">
+
+                <b style="color:#2563eb">➡️ Next Stop</b><br>
+
+                <span style="color:#64748b">
+                    ${escapeHTML(
+                        progress.predictionReason ||
+                        (progress.atEnd ? "Trip destination reached." : "Next stop unavailable.")
+                    )}
+                </span>
+            `;
+        }
+
+        return `
+            <hr style="margin:10px 0;border:0;border-top:1px solid #ddd">
+
+            <b style="color:#2563eb;font-size:15px">Route Progress</b><br>
+
+            Shape: ${escapeHTML(progress.shapeId || "N/A")}<br>
+
+            Current Distance:
+            <b>${formatDistance(progress.currentDistanceMetres)}</b><br>
+
+            Remaining Route:
+            <b>${formatDistance(progress.remainingRouteMetres)}</b><br>
+
+            Distance From Route:
+            <b>${formatDistance(progress.distanceFromRouteMetres)}</b><br>
+
+            Progress:
+            <b>${percentage.toFixed(1)}%</b>
+
+            <div style="
+                width:100%;
+                height:8px;
+                background:#e2e8f0;
+                border-radius:10px;
+                margin:7px 0;
+                overflow:hidden;
+            ">
+                <div style="
+                    width:${percentage}%;
+                    height:100%;
+                    background:#2563eb;
+                    border-radius:10px;
+                "></div>
+            </div>
+
+            ${nearestHTML}
+            ${nextHTML}
+        `;
+    }
+
+    function createPopupHTML(vehicle) {
+        const vehicleId = String(vehicle.vehicleId);
+        const gpsStatus = getVehicleStatus(vehicle);
+        const speedDetails = getSpeedDetails(vehicle);
+
+        const routeProgressHTML = getRouteProgressHTML(
+            vehicle.routeProgress
+        );
+
+        return `
+            <div style="
+                min-width:285px;
+                max-width:340px;
+                font-family:Arial,sans-serif;
+                line-height:1.75;
+                font-size:14px;
+            ">
+
+                <b style="font-size:16px">
+                    🚌 ${escapeHTML(vehicleId)}
+                </b><br>
+
+                Route: ${escapeHTML(vehicle.routeId || activeRouteId)}<br>
+
+                Trip: ${escapeHTML(vehicle.tripId || "N/A")}<br>
+
+                <hr style="margin:9px 0;border:0;border-top:1px solid #ddd">
+
+                GPS Status:
+                <b style="color:${gpsStatus.color}">
+                    ${escapeHTML(gpsStatus.label)}
+                </b><br>
+
+                GPS Data Age:
+                <b>${escapeHTML(getGPSAgeText(vehicle))}</b><br>
+
+                Speed:
+                <b>${escapeHTML(speedDetails.speedText)}</b><br>
+
+                Status:
+                <b style="color:${speedDetails.statusColor}">
+                    ${escapeHTML(speedDetails.status)}
+                </b><br>
+
+                <small style="color:#64748b">
+                    Source: ${escapeHTML(speedDetails.source)}
+                </small>
+
+                ${routeProgressHTML}
+
+                <hr style="margin:10px 0;border:0;border-top:1px solid #ddd">
+
+                <small style="color:#64748b">
+                    Updated:
+                    ${escapeHTML(
+                        vehicle.timestamp
+                            ? new Date(vehicle.timestamp).toLocaleTimeString()
+                            : "N/A"
+                    )}
+                </small>
+
+            </div>
+        `;
+    }
+
+    function startLiveBusTracking() {
+        if (liveBusTimer) {
+            clearInterval(liveBusTimer);
+            liveBusTimer = null;
+        }
+
+        if (!activeRouteId) return;
+
+        document.getElementById("liveStatus").textContent =
+            `Connecting to live buses for route ${activeRouteId}...`;
+
+        refreshLiveBuses();
+
+        liveBusTimer = setInterval(refreshLiveBuses, 5000);
+    }
+
+    async function refreshLiveBuses() {
+        if (!activeRouteId || liveBusRequestRunning) return;
+
+        liveBusRequestRunning = true;
+
+        try {
+            const response = await fetch(
+                `/api/realtime/vehicles/route/${encodeURIComponent(activeRouteId)}/progress`
+            );
+
+            const data = await response.json();
+
+            if (!response.ok || !data.success) {
+                throw new Error(data.message || "Live bus request failed");
+            }
+
+            const vehicles = Array.isArray(data.vehicles)
+                ? data.vehicles
+                : [];
+
+            const currentVehicleIds = new Set();
+
+            let liveCount = 0;
+            let delayedCount = 0;
+            let staleCount = 0;
+            let matchedCount = 0;
+            let unmatchedCount = 0;
+
+            vehicles.forEach(vehicle => {
+                const lat = Number(vehicle.latitude);
+                const lon = Number(vehicle.longitude);
+
+                if (
+                    !vehicle.vehicleId ||
+                    vehicle.latitude === null ||
+                    vehicle.latitude === undefined ||
+                    vehicle.longitude === null ||
+                    vehicle.longitude === undefined ||
+                    !Number.isFinite(lat) ||
+                    !Number.isFinite(lon) ||
+                    lat < -90 || lat > 90 ||
+                    lon < -180 || lon > 180
+                ) return;
+
+                const vehicleId = String(vehicle.vehicleId);
+
+                currentVehicleIds.add(vehicleId);
+
+                const gpsStatus = getVehicleStatus(vehicle);
+
+                if (gpsStatus.key === "live") liveCount++;
+                if (gpsStatus.key === "delayed") delayedCount++;
+                if (gpsStatus.key === "stale") staleCount++;
+
+                if (vehicle.routeProgress?.matched === true) {
+                    matchedCount++;
+                } else {
+                    unmatchedCount++;
+                }
+
+                const popupHTML = createPopupHTML(vehicle);
+
+                let marker = liveBusMarkers.get(vehicleId);
+
+                if (marker) {
+                    marker.setLatLng([lat, lon]);
+                    marker.setIcon(createBusIcon(vehicle));
+                    marker.setPopupContent(popupHTML);
+                    marker.options.title = `${vehicleId} - ${gpsStatus.label}`;
+                } else {
+                    marker = L.marker([lat, lon], {
+                        icon: createBusIcon(vehicle),
+                        title: `${vehicleId} - ${gpsStatus.label}`
+                    }).addTo(map);
+
+                    marker.bindPopup(popupHTML, {
+                        maxWidth: 360
+                    });
+
+                    liveBusMarkers.set(vehicleId, marker);
+                }
+            });
+
+            for (const [vehicleId, marker] of liveBusMarkers.entries()) {
+                if (!currentVehicleIds.has(vehicleId)) {
+                    map.removeLayer(marker);
+                    liveBusMarkers.delete(vehicleId);
+                }
+            }
+
+            document.getElementById("liveStatus").textContent =
+                `Route ${activeRouteId} | Vehicles: ${vehicles.length} | Matched: ${matchedCount} | Unmatched: ${unmatchedCount} | Live: ${liveCount} | Delayed: ${delayedCount} | Stale/Unknown: ${staleCount} | Auto-refresh: 5 seconds | Last checked: ${new Date().toLocaleTimeString()}`;
+
+        } catch (error) {
+            console.error("Live Bus Tracking Error:", error);
+
+            document.getElementById("liveStatus").textContent =
+                `Live bus update failed: ${error.message}. Retrying in 5 seconds.`;
+
+        } finally {
+            liveBusRequestRunning = false;
+        }
+    }
+
+    function renderStops(stops) {
+        const list = document.getElementById("stopsList");
+
+        list.innerHTML = "";
+
+        stops.forEach((stop, index) => {
+            const item = document.createElement("div");
+            item.className = "stop-item";
+
+            const title = document.createElement("strong");
+            title.textContent = `${index + 1}. ${stop.stopName}`;
+
+            const details = document.createElement("small");
+
+            details.textContent =
+                `Stop ID: ${stop.stopId} | Arrival: ${stop.arrivalTime || "N/A"}`;
+
+            item.appendChild(title);
+            item.appendChild(details);
+
+            item.addEventListener("click", () => {
+                const marker = stopMarkers[index];
+
+                if (marker) {
+                    map.setView(marker.getLatLng(), 17);
+                    marker.openPopup();
+                }
+            });
+
+            list.appendChild(item);
+        });
+    }
+
+    function escapeHTML(value) {
+        return String(value ?? "").replace(/[&<>"']/g, char => ({
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#39;"
+        })[char]);
+    }
+
+    document.getElementById("tripId").addEventListener("keydown", event => {
+        if (event.key === "Enter") loadTrip();
+    });
+
+    loadTrip();
+</script>
+
+</body>
+</html>
